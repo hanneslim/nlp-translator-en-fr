@@ -22,7 +22,7 @@ df = pd.read_csv("./dataset/eng_-french.csv")
 df.columns = ["english", "frensh"]
 # print(df.head())
 # print(df.info())
-data = df[:1000]
+data = df[:10000]
 # print(data.info())
 
 
@@ -80,8 +80,11 @@ max_decoder_sequence_len = np.max([len(dec) for dec in decoder])
 def make_references():
     # Load the saved model
     model = load_model('./model-saves/Translate_Eng_FR.h5')
+    # model = load_model("./model-experimental/Translate_Eng_FR.h5")
+
     # Load the saved weights into the reference models
     model.load_weights('./model-saves/model_NMT')
+    # model.load_weights("./model-experimental/model_NMT")
 
     # Get the encoder and decoder layers from the model by name
     encoder_input = model.input[0]
@@ -121,7 +124,7 @@ def prepare_text(text):
 for i in range(20):  # throws error when word is not in vocabulary...!
     enc_model, dec_model = make_references()
 
-    states_value = enc_model(prepare_text(input("Enter text :- ")))
+    states_value = enc_model(prepare_text(input("Enter text : ")))
 
     empty_target_seq = np.zeros((1, 1))
     empty_target_seq[0, 0] = french_tokenize.word_index["start"]

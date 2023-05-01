@@ -30,6 +30,7 @@ from tensorflow.keras.models import Model, Sequential
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.utils import to_categorical
 
+# tf.debugging.set_log_device_placement(True)
 
 # read in dataSet for training
 df = pd.read_csv("./dataset/eng_-french.csv")
@@ -150,72 +151,11 @@ callback = tf.keras.callbacks.EarlyStopping(monitor='loss', patience=3)
 history = model.fit(
    [encoder_seq, decoder_inp],
    decoder_output,
-   epochs=300,  # 80
-   batch_size=250,  # 450
+   epochs=500,  # 80
+   batch_size=60,  # 450
    # callbacks=[callback]
 )
 
 # save model
 model.save("./model-experimental/Translate_Eng_FR.h5")
 model.save_weights("./model-experimental/model_NMT")
-
-
-def make_references():
-  encoder_reference_model=Model(encoder_input,encoder_states)
-
-  decoder_state_h=Input(shape=(256,))
-  decoder_state_c=Input(shape=(256,))
-  decoder_input_states=[decoder_state_h,decoder_state_c]
-
-  decoder_outputs,state_h,state_c=decoder_lstm(decoder_embedding,initial_state=decoder_input_states)
-
-  decoder_state=[state_h,state_c]
-  decoder_outputs=decoder_dense(decoder_outputs)
-  decoder_reference_model=Model([decoder_input]+decoder_input_states,[decoder_outputs]+decoder_state)
-
-  return encoder_reference_model,decoder_reference_model
-
-
-# prepare Text
-def prepare_text(text):
-    text = clean_english(text)
-    res = []
-    for i in text.split(" "):
-        try:
-            res.append(english_tokenize.word_index[i])
-        except KeyError:
-            res.append(english_tokenize.word_index[english_tokenize.oov_token])
-    pad = pad_sequences([res], maxlen=max_encoder_sequence_len, padding="post")
-    return pad
-
-
-# print(prepare_text("How are you"))
-
-for i in range(20):  # throws error when word is not in vocabulary...!
-    enc_model, dec_model = make_references()
-
-    states_value = enc_model(prepare_text(input("Enter text :- ")))
-
-    empty_target_seq = np.zeros((1, 1))
-    empty_target_seq[0, 0] = french_tokenize.word_index["start"]
-
-    stop_condition = False
-    decoded_translaition=""
-
-    while not stop_condition:
-        dec_output, h, c = dec_model.predict([empty_target_seq]+states_value)
-        sampled_word_index = np.argmax(dec_output[0, -1, :])
-        sampled_word = None
-
-        for word, index in french_tokenize.word_index.items():
-            if sampled_word_index == index:
-                decoded_translaition+=' {}'.format(word)
-                sampled_word = word
-
-            if sampled_word == "end" or len(decoded_translaition.split(" ")) >= max_decoder_sequence_len:
-                stop_condition = True
-
-        empty_target_seq = np.zeros((1, 1))
-        empty_target_seq[0, 0] = sampled_word_index
-        states_value = [h, c]
-    print(decoded_translaition)
