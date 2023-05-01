@@ -36,7 +36,7 @@ df = pd.read_csv("./dataset/eng_-french.csv")
 df.columns = ["english", "frensh"]
 # print(df.head())
 # print(df.info())
-data = df[:]
+data = df[:10000]
 # print(data.info())
 
 
@@ -77,7 +77,7 @@ data["frensh"] = data["frensh"].apply(lambda txt: f"<start> {txt} <end>")
 # english tokenizer
 english_tokenize = Tokenizer(filters='#$%&()*+,-./:;<=>@[\\]^_`{|}~\t\n')
 english_tokenize.fit_on_texts(data["english"])
-num_encoder_tokens = len(english_tokenize.word_index)
+num_encoder_tokens = len(english_tokenize.word_index)+1
 # print(num_encoder_tokens)
 encoder = english_tokenize.texts_to_sequences(data["english"])
 # print(encoder[:5])
@@ -87,7 +87,7 @@ max_encoder_sequence_len = np.max([len(enc) for enc in encoder])
 # frensh tokenizer
 french_tokenize = Tokenizer(filters="#$%&()*+,-./:;<=>@[\\]^_`{|}~\t\n")
 french_tokenize.fit_on_texts(data["frensh"])
-num_decoder_tokens = len(french_tokenize.word_index)
+num_decoder_tokens = len(french_tokenize.word_index)+1
 # print(num_decoder_tokens)
 decoder = french_tokenize.texts_to_sequences(data["frensh"])
 # print(decoder[:5])
@@ -125,20 +125,20 @@ decoder_output = pad_sequences([arr[1:] for arr in decoder], maxlen=max_decoder_
 
 # Design LSTM NN (Encoder & Decoder)
 # encoder model
-encoder_input = Input(shape=(None,), name="encoder_input_layer")
-encoder_embedding = Embedding(num_encoder_tokens, 300, input_length=max_encoder_sequence_len, name="encoder_embedding_layer")(encoder_input)
-encoder_lstm = LSTM(256, activation="tanh", return_sequences=True, return_state=True, name="encoder_lstm_1_layer")(encoder_embedding)
-encoder_lstm2 = LSTM(256, activation="tanh", return_state=True, name="encoder_lstm_2_layer")(encoder_lstm)
-_, state_h, state_c = encoder_lstm2
-encoder_states = [state_h, state_c]
+encoder_input=Input(shape=(None,),name="encoder_input_layer")
+encoder_embedding=Embedding(num_encoder_tokens,300,input_length=max_encoder_sequence_len,name="encoder_embedding_layer")(encoder_input)
+encoder_lstm=LSTM(256,activation="tanh",return_sequences=True,return_state=True,name="encoder_lstm_1_layer")(encoder_embedding)
+encoder_lstm2=LSTM(256,activation="tanh",return_state=True,name="encoder_lstm_2_layer")(encoder_lstm)
+_,state_h,state_c=encoder_lstm2
+encoder_states=[state_h,state_c]
 
 # decoder model
-decoder_input = Input(shape=(None,), name="decoder_input_layer")
-decoder_embedding = Embedding(num_decoder_tokens, 300, input_length=max_decoder_sequence_len, name="decoder_embedding_layer")(decoder_input)
-decoder_lstm = LSTM(256, activation="tanh", return_state=True, return_sequences=True, name="decoder_lstm_layer")
-decoder_outputs, _, _ = decoder_lstm(decoder_embedding, initial_state=encoder_states)
-decoder_dense = Dense(num_decoder_tokens+1, activation="softmax", name="decoder_final_layer")
-outputs = decoder_dense(decoder_outputs)
+decoder_input=Input(shape=(None,),name="decoder_input_layer")
+decoder_embedding=Embedding(num_decoder_tokens,300,input_length=max_decoder_sequence_len,name="decoder_embedding_layer")(decoder_input)
+decoder_lstm=LSTM(256,activation="tanh",return_state=True,return_sequences=True,name="decoder_lstm_layer")
+decoder_outputs,_,_=decoder_lstm(decoder_embedding,initial_state=encoder_states)
+decoder_dense=Dense(num_decoder_tokens+1,activation="softmax",name="decoder_final_layer")
+outputs=decoder_dense(decoder_outputs)
 
 model = Model([encoder_input, decoder_input], outputs)
 # print(model.summary())
@@ -150,14 +150,14 @@ callback = tf.keras.callbacks.EarlyStopping(monitor='loss', patience=3)
 history = model.fit(
    [encoder_seq, decoder_inp],
    decoder_output,
-   epochs=1,  # 80
-   batch_size=450,
+   epochs=300,  # 80
+   batch_size=250,  # 450
    # callbacks=[callback]
 )
 
 # save model
-model.save("./model-saves/Translate_Eng_FR.h5")
-model.save_weights("./model-saves/model_NMT")
+model.save("./model-experimental/Translate_Eng_FR.h5")
+model.save_weights("./model-experimental/model_NMT")
 
 
 def make_references():

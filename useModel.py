@@ -22,7 +22,7 @@ df = pd.read_csv("./dataset/eng_-french.csv")
 df.columns = ["english", "frensh"]
 # print(df.head())
 # print(df.info())
-data = df[:]
+data = df[:1000]
 # print(data.info())
 
 
@@ -59,7 +59,7 @@ data["frensh"] = data["frensh"].apply(lambda txt: f"<start> {txt} <end>")
 # english tokenizer
 english_tokenize = Tokenizer(filters='#$%&()*+,-./:;<=>@[\\]^_`{|}~\t\n')
 english_tokenize.fit_on_texts(data["english"])
-num_encoder_tokens = len(english_tokenize.word_index)
+num_encoder_tokens = len(english_tokenize.word_index)+1
 # print(num_encoder_tokens)
 encoder = english_tokenize.texts_to_sequences(data["english"])
 # print(encoder[:5])
@@ -69,7 +69,7 @@ max_encoder_sequence_len = np.max([len(enc) for enc in encoder])
 # frensh tokenizer
 french_tokenize = Tokenizer(filters="#$%&()*+,-./:;<=>@[\\]^_`{|}~\t\n")
 french_tokenize.fit_on_texts(data["frensh"])
-num_decoder_tokens = len(french_tokenize.word_index)
+num_decoder_tokens = len(french_tokenize.word_index)+1
 # print(num_decoder_tokens)
 decoder = french_tokenize.texts_to_sequences(data["frensh"])
 # print(decoder[:5])
