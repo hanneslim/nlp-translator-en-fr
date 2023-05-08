@@ -21,7 +21,6 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
-
 # Model
 from tensorflow.keras.layers import LSTM, Embedding, Input, Dense, SpatialDropout1D, Activation
 from tensorflow.keras.models import Model, Sequential
@@ -30,15 +29,16 @@ from tensorflow.keras.models import Model, Sequential
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.utils import to_categorical
 
-# tf.debugging.set_log_device_placement(True)
+print(len(tf.config.experimental.list_physical_devices('GPU')) > 0)
 
 # read in dataSet for training
 df = pd.read_csv("./dataset/eng_-french.csv")
-df.columns = ["english", "frensh"]
+df.columns = ["english", "french"]
 # print(df.head())
 # print(df.info())
-data = df[:10000]
+data = df[:170000]
 # print(data.info())
+
 
 
 # clean english column
@@ -55,23 +55,23 @@ def clean_english(text):
 
 # print(data.iloc[1, 0], clean_english(data.iloc[1, 0]))
 
-# clean frensh language
-def clean_frensh(text):
+# clean french language
+def clean_french(text):
     text = text.lower()  # lower case
     # remove any characters not a-z and ?!,'
-    # characters a-z and (éâàçêêëôîû) chars of frensh lang which contain accent
+    # characters a-z and (éâàçêêëôîû) chars of french lang which contain accent
     text = re.sub(u"[^a-zéâàçêêëôîû!?',]", " ", text)
     return text
 
-# print(data.iloc[4,1],clean_frensh(data.iloc[4,1]))
+# print(data.iloc[4,1],clean_french(data.iloc[4,1]))
 
 
 # apply cleaningFunctions to dataframe
 data["english"] = data["english"].apply(lambda txt: clean_english(txt))
-data["frensh"] = data["frensh"].apply(lambda txt: clean_frensh(txt))
+data["french"] = data["french"].apply(lambda txt: clean_french(txt))
 
-# add <start> <end> token to decoder sentence (Frensh)
-data["frensh"] = data["frensh"].apply(lambda txt: f"<start> {txt} <end>")
+# add <start> <end> token to decoder sentence (french)
+data["french"] = data["french"].apply(lambda txt: f"<start> {txt} <end>")
 
 # print(data.sample(10))
 
@@ -85,12 +85,12 @@ encoder = english_tokenize.texts_to_sequences(data["english"])
 max_encoder_sequence_len = np.max([len(enc) for enc in encoder])
 # print(max_encoder_sequence_len)
 
-# frensh tokenizer
+# french tokenizer
 french_tokenize = Tokenizer(filters="#$%&()*+,-./:;<=>@[\\]^_`{|}~\t\n")
-french_tokenize.fit_on_texts(data["frensh"])
+french_tokenize.fit_on_texts(data["french"])
 num_decoder_tokens = len(french_tokenize.word_index)+1
 # print(num_decoder_tokens)
-decoder = french_tokenize.texts_to_sequences(data["frensh"])
+decoder = french_tokenize.texts_to_sequences(data["french"])
 # print(decoder[:5])
 max_decoder_sequence_len = np.max([len(dec) for dec in decoder])
 # print(max_decoder_sequence_len)
@@ -104,7 +104,7 @@ idx_2_txt_encoder = {k: i for i, k in english_tokenize.word_index.items()}
 idx_2_txt_decoder[0] = "<pad>"
 idx_2_txt_encoder[0] = "<pad>"
 
-# save idx_2_txt_encoder and idx_2_txt_decoder , english_tokenize.word_index , frensh_tokenize.word_index
+# save idx_2_txt_encoder and idx_2_txt_decoder , english_tokenize.word_index , french_tokenize.word_index
 pickle.dump(english_tokenize.word_index, open("./saves/word_2_idx_input.txt", "wb"))
 pickle.dump(french_tokenize.word_index, open("./saves/word_2_idx_target.txt", "wb"))
 pickle.dump(idx_2_txt_encoder, open("./saves/idx_2_word_input.txt", "wb"))
@@ -146,15 +146,19 @@ model = Model([encoder_input, decoder_input], outputs)
 
 # train model
 loss = tf.losses.SparseCategoricalCrossentropy()
-model.compile(optimizer='rmsprop', loss=loss, metrics=['accuracy'])
-callback = tf.keras.callbacks.EarlyStopping(monitor='loss', patience=3)
+model.compile(optimizer='adam', loss=loss, metrics=['accuracy'])
+callback = tf.keras.callbacks.EarlyStopping(monitor='loss', patience=10)
 history = model.fit(
-   [encoder_seq, decoder_inp],
-   decoder_output,
-   epochs=500,  # 80
-   batch_size=60,  # 450
-   # callbacks=[callback]
+    [encoder_seq, decoder_inp],
+    decoder_output,
+    epochs=300,  # 80
+    batch_size=450,  # 450
+    # validation_split=0.2,
+    # callbacks=[callback]
 )
+# adam 20000 samples epoch 200 batch size 60 loss resulted in 0.059 ->rmsprop loss resulted in 0.2
+# adam 170000 samples epochs 80 batch size 450 loss resulted in 0.0437
+# rmsprop 170000 samples epochs 300 batch size 450 resulted in 0.0415
 
 # save model
 model.save("./model-experimental/Translate_Eng_FR.h5")

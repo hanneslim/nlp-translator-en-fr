@@ -19,10 +19,10 @@ from tensorflow.keras.models import load_model
 
 # read in dataSet for training
 df = pd.read_csv("./dataset/eng_-french.csv")
-df.columns = ["english", "frensh"]
+df.columns = ["english", "french"]
 # print(df.head())
 # print(df.info())
-data = df[:10000]
+data = df[:170000]
 # print(data.info())
 
 
@@ -38,23 +38,23 @@ def clean_english(text):
     return text
 
 
-# clean frensh language
-def clean_frensh(text):
+# clean french language
+def clean_french(text):
     text = text.lower()  # lower case
     # remove any characters not a-z and ?!,'
-    # characters a-z and (éâàçêêëôîû) chars of frensh lang which contain accent
+    # characters a-z and (éâàçêêëôîû) chars of french lang which contain accent
     text = re.sub(u"[^a-zéâàçêêëôîû!?',]", " ", text)
     return text
 
-# print(data.iloc[4,1],clean_frensh(data.iloc[4,1]))
+# print(data.iloc[4,1],clean_french(data.iloc[4,1]))
 
 
 # apply cleaningFunctions to dataframe
 data["english"] = data["english"].apply(lambda txt: clean_english(txt))
-data["frensh"] = data["frensh"].apply(lambda txt: clean_frensh(txt))
+data["french"] = data["french"].apply(lambda txt: clean_french(txt))
 
-# add <start> <end> token to decoder sentence (Frensh)
-data["frensh"] = data["frensh"].apply(lambda txt: f"<start> {txt} <end>")
+# add <start> <end> token to decoder sentence (french)
+data["french"] = data["french"].apply(lambda txt: f"<start> {txt} <end>")
 
 # english tokenizer
 english_tokenize = Tokenizer(filters='#$%&()*+,-./:;<=>@[\\]^_`{|}~\t\n')
@@ -66,12 +66,12 @@ encoder = english_tokenize.texts_to_sequences(data["english"])
 max_encoder_sequence_len = np.max([len(enc) for enc in encoder])
 # print(max_encoder_sequence_len)
 
-# frensh tokenizer
+# french tokenizer
 french_tokenize = Tokenizer(filters="#$%&()*+,-./:;<=>@[\\]^_`{|}~\t\n")
-french_tokenize.fit_on_texts(data["frensh"])
+french_tokenize.fit_on_texts(data["french"])
 num_decoder_tokens = len(french_tokenize.word_index)+1
 # print(num_decoder_tokens)
-decoder = french_tokenize.texts_to_sequences(data["frensh"])
+decoder = french_tokenize.texts_to_sequences(data["french"])
 # print(decoder[:5])
 max_decoder_sequence_len = np.max([len(dec) for dec in decoder])
 # print(max_decoder_sequence_len)
@@ -79,12 +79,12 @@ max_decoder_sequence_len = np.max([len(dec) for dec in decoder])
 
 def make_references():
     # Load the saved model
-    model = load_model('./model-saves/Translate_Eng_FR.h5')
-    # model = load_model("./model-experimental/Translate_Eng_FR.h5")
+    # model = load_model('./model-saves/Translate_Eng_FR.h5')
+    model = load_model("./model-experimental/Translate_Eng_FR.h5")
 
     # Load the saved weights into the reference models
-    model.load_weights('./model-saves/model_NMT')
-    # model.load_weights("./model-experimental/model_NMT")
+    # model.load_weights('./model-saves/model_NMT')
+    model.load_weights("./model-experimental/model_NMT")
 
     # Get the encoder and decoder layers from the model by name
     encoder_input = model.input[0]
